@@ -17,11 +17,19 @@ Compilation
 Dictionary
 ----------
 
-このプラグインは、カスタム辞書を `plugins/KanaChat/dictionary.xlsx` に保存します。
-各行には、`word` 列に日本語の単語、`reading` 列にそのローマ字読みが記載されています。
+このプラグインは、カスタム辞書を `plugins/KanaChat/dictionary.yml` に保存します。
+`entries` の各要素に、日本語の単語 (`word`) とローマ字読みの配列 (`readings`) を記載します。
 
-The plugin stores custom dictionary in `plugins/KanaChat/dictionary.xlsx`.
-Each row contains a Japanese word in the `word` column and its romaji reading in
-the `reading` column. 
+The plugin stores custom dictionary in `plugins/KanaChat/dictionary.yml`.
+Each entry contains a Japanese word (`word`) and a list of romaji readings
+(`readings`).
+
+```yaml
+entries:
+  - word: 漢字
+    readings:
+      - kanji
+      - かんじ
+```
 
 by Google Translate

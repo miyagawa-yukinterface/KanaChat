@@ -1,38 +1,31 @@
 package net.ironingot.kanachat;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class KanaChatDictionary {
-    private static final String FILE_NAME = "dictionary.xlsx";
-    private static final String SHEET_NAME = "dictionary";
-    private static final String WORD_HEADER = "word";
-    private static final String READING_HEADER = "reading";
+    private static final String FILE_NAME = "dictionary.yml";
+    private static final String LEGACY_FILE_NAME = "dictionary.xlsx";
+    private static final String ENTRIES_PATH = "entries";
 
     private final JavaPlugin plugin;
-    private final Path file;
+    private final File file;
     private final Map<String, List<String>> entries = new LinkedHashMap<String, List<String>>();
 
     public KanaChatDictionary(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.file = plugin.getDataFolder().toPath().resolve(FILE_NAME);
+        this.file = new File(plugin.getDataFolder(), FILE_NAME);
+        warnAboutLegacyDictionary();
         load();
         migrateLegacyDictionary();
     }
@@ -73,58 +66,48 @@ public class KanaChatDictionary {
     }
 
     private void load() {
-        if (!Files.exists(file)) {
+        if (!file.exists()) {
             save();
             return;
         }
 
-        try (InputStream input = Files.newInputStream(file);
-             Workbook workbook = new XSSFWorkbook(input)) {
-            Sheet sheet = workbook.getSheet(SHEET_NAME);
-            if (sheet == null) {
-                return;
+        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
+        for (Map<?, ?> serializedEntry : configuration.getMapList(ENTRIES_PATH)) {
+            Object wordValue = serializedEntry.get("word");
+            Object readingsValue = serializedEntry.get("readings");
+            if (!(wordValue instanceof String) || !(readingsValue instanceof Collection)) {
+                continue;
             }
-            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-                Row row = sheet.getRow(rowIndex);
-                if (row == null) {
-                    continue;
-                }
-                String word = getCellValue(row.getCell(0));
-                String reading = getCellValue(row.getCell(1));
-                if (!word.isEmpty() && !reading.isEmpty()) {
-                    List<String> readings = entries.get(word);
-                    if (readings == null) {
-                        readings = new ArrayList<String>();
-                        entries.put(word, readings);
-                    }
-                    readings.add(reading);
+
+            List<String> readings = new ArrayList<String>();
+            for (Object reading : (Collection<?>) readingsValue) {
+                if (reading instanceof String && !((String) reading).trim().isEmpty()) {
+                    readings.add(((String) reading).trim());
                 }
             }
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to load " + file, exception);
+            if (!readings.isEmpty()) {
+                entries.put((String) wordValue, readings);
+            }
         }
     }
 
     private void save() {
         try {
-            Files.createDirectories(file.getParent());
-            try (Workbook workbook = new XSSFWorkbook();
-                 OutputStream output = Files.newOutputStream(file)) {
-                Sheet sheet = workbook.createSheet(SHEET_NAME);
-                Row header = sheet.createRow(0);
-                header.createCell(0).setCellValue(WORD_HEADER);
-                header.createCell(1).setCellValue(READING_HEADER);
-
-                int rowIndex = 1;
-                for (Map.Entry<String, List<String>> entry : entries.entrySet()) {
-                    for (String reading : entry.getValue()) {
-                        Row row = sheet.createRow(rowIndex++);
-                        row.createCell(0).setCellValue(entry.getKey());
-                        row.createCell(1).setCellValue(reading);
-                    }
-                }
-                workbook.write(output);
+            if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
+                throw new IOException("Failed to create directory " + file.getParentFile());
             }
+
+            List<Map<String, Object>> serializedEntries = new ArrayList<Map<String, Object>>();
+            for (Map.Entry<String, List<String>> entry : entries.entrySet()) {
+                Map<String, Object> serializedEntry = new LinkedHashMap<String, Object>();
+                serializedEntry.put("word", entry.getKey());
+                serializedEntry.put("readings", new ArrayList<String>(entry.getValue()));
+                serializedEntries.add(serializedEntry);
+            }
+
+            YamlConfiguration configuration = new YamlConfiguration();
+            configuration.set(ENTRIES_PATH, serializedEntries);
+            configuration.save(file);
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to save " + file, exception);
         }
@@ -147,7 +130,11 @@ public class KanaChatDictionary {
         plugin.saveConfig();
     }
 
-    private String getCellValue(Cell cell) {
-        return cell == null ? "" : cell.toString().trim();
+    private void warnAboutLegacyDictionary() {
+        File legacyFile = new File(plugin.getDataFolder(), LEGACY_FILE_NAME);
+        if (!file.exists() && legacyFile.exists()) {
+            plugin.getLogger().warning("Found legacy " + LEGACY_FILE_NAME
+                    + ". Convert it to " + FILE_NAME + " before using the dictionary.");
+        }
     }
 }

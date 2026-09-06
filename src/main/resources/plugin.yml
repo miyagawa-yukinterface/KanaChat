@@ -1,5 +1,5 @@
 name: KanaChat
-version: 2.1.0
+version: 2.1.1
 author: fubira, 月見里 彩葉
 main: net.ironingot.kanachat.KanaChat
 api-version: '1.21'
