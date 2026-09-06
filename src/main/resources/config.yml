@@ -1,0 +1,5 @@
+# Optional custom readings. Each reading maps to the Japanese word.
+dictionary: {}
+
+# Per-player settings are created automatically.
+user: {}
