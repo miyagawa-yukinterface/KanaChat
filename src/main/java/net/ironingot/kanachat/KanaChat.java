@@ -3,22 +3,30 @@ package net.ironingot.kanachat;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.PluginCommand;
 
-import java.io.File;
-import java.util.logging.Logger;
 import java.util.Arrays;
+import java.util.logging.Logger;
 
 import net.ironingot.kanachat.listener.AsyncChatDecorateListener;
 
 public class KanaChat extends JavaPlugin {
     public static final Logger logger = Logger.getLogger("Minecraft");
-    private ConfigHandler configHandler;
+    private KanaChatConfiguration configuration;
+    private KanaChatDictionary dictionary;
 
     public void onEnable() {
-        this.configHandler = new ConfigHandler(new File(this.getDataFolder(), "config.yml"));
+        saveDefaultConfig();
+        configuration = new KanaChatConfiguration(this);
+        configuration.migrateLegacyConfiguration();
+        dictionary = new KanaChatDictionary(this);
 
         PluginCommand command = getCommand("kanachat");
-        command.setAliases(Arrays.asList("japanize", "jc"));
-        command.setExecutor(new KanaChatCommand(this));
+        if (command == null) {
+            throw new IllegalStateException("The kanachat command is not declared in plugin.yml");
+        }
+        command.setAliases(Arrays.asList("japanize", "kc"));
+        KanaChatCommand commandHandler = new KanaChatCommand(this);
+        command.setExecutor(commandHandler);
+        command.setTabCompleter(new KanaChatTabCompleter(this));
 
         // getServer().getPluginManager().registerEvents(new AsyncPlayerChatListener(this), this);
         getServer().getPluginManager().registerEvents(new AsyncChatDecorateListener(this), this);
@@ -30,7 +38,11 @@ public class KanaChat extends JavaPlugin {
         logger.info(getDescription().getName() + " is disabled");
     }
 
-    public ConfigHandler getConfigHandler() {
-        return configHandler;
+    public KanaChatConfiguration getConfiguration() {
+        return configuration;
+    }
+
+    public KanaChatDictionary getDictionary() {
+        return dictionary;
     }
 }

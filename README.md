@@ -13,3 +13,23 @@ Compilation
 
 * Install [Maven 3](http://maven.apache.org/download.html)
 * Check out this repo and: `mvn clean package`
+
+Dictionary
+----------
+
+このプラグインは、カスタム辞書を `plugins/KanaChat/dictionary.yml` に保存します。
+`entries` の各要素に、日本語の単語 (`word`) とローマ字読みの配列 (`readings`) を記載します。
+
+The plugin stores custom dictionary in `plugins/KanaChat/dictionary.yml`.
+Each entry contains a Japanese word (`word`) and a list of romaji readings
+(`readings`).
+
+```yaml
+entries:
+  - word: 漢字
+    readings:
+      - kanji
+      - かんじ
+```
+
+by Google Translate

@@ -2,8 +2,8 @@ package net.ironingot.kanachat.listener;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Map;
 
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -76,10 +76,10 @@ public class AsyncChatDecorateListener implements Listener {
         }
 
         Player player = event.player();
-        Boolean toKana = plugin.getConfigHandler().getUserMode(player.getName());
-        Boolean toKanji = plugin.getConfigHandler().getUserKanjiConversion(player.getName());
+        boolean toKana = plugin.getConfiguration().isKanaEnabled(player.getName());
+        boolean toKanji = plugin.getConfiguration().isKanjiEnabled(player.getName());
 
-        if (toKana.equals(Boolean.FALSE)) {
+        if (!toKana) {
             return;
         }
 
@@ -98,16 +98,14 @@ public class AsyncChatDecorateListener implements Listener {
         // [Prefix] <Converted Message> <Source Message>
         if (!prefix.isEmpty()) {
             component
-                .append(Component.text(prefix))
-                .append(Component.text(" "));
+                    .append(Component.text(prefix))
+                    .append(Component.text(" "));
         }
 
         return component
-            .append(Component.text(dst))
-            .append(Component.text(" " + ChatColor.DARK_GRAY))
-            .append(Component.text("("))
-            .append(Component.text(src))
-            .append(Component.text(")"));
+                .append(Component.text(dst))
+                .append(Component.text(" ").color(NamedTextColor.DARK_GRAY))
+                .append(Component.text(src).color(NamedTextColor.DARK_GRAY));
 
     }
 
@@ -115,6 +113,7 @@ public class AsyncChatDecorateListener implements Listener {
     {
         StringBuilder stringBuilder = new StringBuilder();
         boolean isLastTranslated = true;
+        Map<String, String> dictionary = plugin.getDictionary().getValues();
 
         for (String word: message.split(" ")) {
             Matcher excludeMatcher = excludePattern.matcher(word);
@@ -141,7 +140,7 @@ public class AsyncChatDecorateListener implements Listener {
                 prefix = prefixMatcher.group(1);
                 word = prefixMatcher.group(2);
             }
-        
+
             // find postfix signs
             Matcher postfixMatcher = postfixPattern.matcher(word);
             String postfix = "";
@@ -149,7 +148,17 @@ public class AsyncChatDecorateListener implements Listener {
                 word = postfixMatcher.group(1);
                 postfix = postfixMatcher.group(2);
             }
-        
+
+            String dictionaryValue = dictionary.get(word.toLowerCase());
+            if (dictionaryValue != null) {
+                if (!isLastTranslated) {
+                    stringBuilder.append(" ");
+                }
+                stringBuilder.append(prefix + dictionaryValue + postfix);
+                isLastTranslated = true;
+                continue;
+            }
+
             // Roma-Ji -> Hiragana translation
             Kana kana = new Kana();
             kana.setLine(word);
@@ -157,16 +166,16 @@ public class AsyncChatDecorateListener implements Listener {
             String translatedWord = kana.getLine();
 
             // Hiragana -> Kanji translation
-            if (toKanji.equals(Boolean.TRUE)) {
+            if (toKanji) {
                 int wordLength = word.length();
                 int headLength = wordLength < 2 ? wordLength : 2;
                 int footLength = wordLength < 2 ? wordLength : 2;
 
                 if (translatedWord.startsWith(word.substring(0, headLength)) ||
-                    translatedWord.endsWith(word.substring(wordLength - footLength, wordLength))) {
+                        translatedWord.endsWith(word.substring(wordLength - footLength, wordLength))) {
                     // its not roma-ji may be.
                     translatedWord = word;
-                    
+
                     // with blank
                     if (stringBuilder.length() > 0) {
                         stringBuilder.append(" ");
@@ -188,4 +197,5 @@ public class AsyncChatDecorateListener implements Listener {
 
         return stringBuilder.toString();
     }
+
 }

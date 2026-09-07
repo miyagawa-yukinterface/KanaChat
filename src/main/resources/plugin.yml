@@ -1,8 +1,10 @@
 name: KanaChat
-version: 2.1.0
-author: fubira
+version: 2.1.1
+author: fubira, 月見里 彩葉
 main: net.ironingot.kanachat.KanaChat
+api-version: '1.21'
 description: Alphabet to Hiragana convert + Kanji Translation
+website: 'https://github.com/miyagawa-yukinterface/KanaChat/'
 commands:
   kanachat:
     aliases:
@@ -11,4 +13,8 @@ commands:
     usage: |
       /<command> [on|off] 
       /<command> kanji [on|off]
+      /<command> dict list
+      /<command> dict add <word> <alphabet...>
+      /<command> dict edit <word> <alphabet...>
+      /<command> dict remove <word>
     description: Enable or Disable roma-ji japanese translation
